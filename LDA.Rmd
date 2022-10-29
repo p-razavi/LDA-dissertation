@@ -1,0 +1,44 @@
+---
+title: "LDA on Anger Narratives"
+author: "Pooya Razavi"
+date: "last knitted: `r Sys.time()`"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: textmate
+    toc: TRUE
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
+
+#set up categorical variables
+df <- df %>% 
+          mutate(NarrativeWritten = as.factor(df$NarrativeWritten),
+                 NarrativeRelevant = as.factor(df$NarrativeRelevant),
+                 Condition = as.factor(df$Condition))
+
+#assigning values to factor levels
+  levels(df$NarrativeWritten) <- c("No", "Yes")
+
+  levels(df$NarrativeRelevant) <- c("No", "Yes", NA) #note: This needs to be updated in the dataset after all naratives have been coded by RAs
+
+  levels(df$Condition) <- c("justified", "nonjustified", NA)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Create the dataframe for text analysis
+
+```{r}
+df2 <- df %>% 
+          dplyr::filter(NarrativeRelevant == "Yes") %>% 
+  
+```
+
