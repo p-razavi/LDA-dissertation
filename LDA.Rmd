@@ -15,6 +15,7 @@ editor_options:
 ```{r setup, include=FALSE}
 library(dplyr)
 library(tidytext)
+library(ggplot2)
 
 df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
 
@@ -101,6 +102,46 @@ lda_model <- topicmodels::LDA(x = dtm, k = 2, method = "Gibbs",
 #probability of each topic for each narrative
 topicmodels::posterior(lda_model)$topics %>% 
   head(20)
+
+#word-topic probability
+wt_prob <- tidytext::tidy(lda_model, matrix = "beta")
+
+#document-topic probability (or narrative-topic probability)
+dt_prob <- tidytext::tidy(lda_model, matrix = "gamma")
+
+#find top 15 terms that are more common in each topic
+wt_prob %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 15) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta) %>% 
+  print(n = 30)
+```
+
+# Visualization
+
+```{r}
+# narrative-topic probability (for 10 narratives)
+ten_narrative_ids <- df2$id[1:10] #list of first 10 narratives
+
+tidytext::tidy(lda_model, matrix = "gamma") %>% 
+  filter(document %in% ten_narrative_ids) %>% 
+  ggplot(aes(x = document, y = gamma)) +
+  geom_col(aes(fill = as.factor(topic))) + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust= .5))
+
+
+# word-topic probability (for 7 words)
+seven_words <- (as.matrix(dtm) %>% colnames())[23:30] #list of terms 23 to 30
+
+
+tidytext::tidy(lda_model, matrix = "beta") %>% 
+  filter(term %in% seven_words) %>% 
+  ggplot(aes(x = term, y = beta)) +
+  geom_col(aes(fill = as.factor(topic)),
+           position = position_dodge()) + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust= .5))
+
 
 ```
 
