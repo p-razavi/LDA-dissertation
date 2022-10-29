@@ -13,7 +13,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-library(tidyverse)
+library(dplyr)
 
 df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
 
@@ -21,7 +21,8 @@ df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dis
 df <- df %>% 
           mutate(NarrativeWritten = as.factor(df$NarrativeWritten),
                  NarrativeRelevant = as.factor(df$NarrativeRelevant),
-                 Condition = as.factor(df$Condition))
+                 Condition = as.factor(df$Condition),
+                 gender = as.factor(df$gender))
 
 #assigning values to factor levels
   levels(df$NarrativeWritten) <- c("No", "Yes")
@@ -29,6 +30,7 @@ df <- df %>%
   levels(df$NarrativeRelevant) <- c("No", "Yes", NA) #note: This needs to be updated in the dataset after all naratives have been coded by RAs
 
   levels(df$Condition) <- c("justified", "nonjustified", NA)
+  levels(df$gender) <- c("female", "male", "non-binary", "self-describe", "prefer_not")
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -39,6 +41,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 df2 <- df %>% 
           dplyr::filter(NarrativeRelevant == "Yes") %>% 
-  
+          dplyr::select(Duration__in_seconds_, ResponseId, right_narrative, nonright_narrative, Condition, 
+                        anger_feel, anger_express, who_caused, gender) %>% 
+          dplyr::rename("duration" = "Duration__in_seconds_",
+                        "id" = "ResponseId",
+                        "justified_nar" = "right_narrative",
+                        "notjustified_nar" = "nonright_narrative",
+                        "condition" = "Condition") %>% 
+          dplyr::mutate(all_narative = dplyr::coalesce(justified_nar, notjustified_nar))
+
+
 ```
 
