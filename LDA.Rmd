@@ -14,6 +14,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 library(dplyr)
+library(tidytext)
 
 df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
 
@@ -48,8 +49,58 @@ df2 <- df %>%
                         "justified_nar" = "right_narrative",
                         "notjustified_nar" = "nonright_narrative",
                         "condition" = "Condition") %>% 
-          dplyr::mutate(all_narative = dplyr::coalesce(justified_nar, notjustified_nar))
+          dplyr::mutate(all_narratives = dplyr::coalesce(justified_nar, notjustified_nar))
 
+
+```
+
+# Preparing the document
+
+```{r}
+#tokenize the text
+tokenized_narratives <- df2 %>% 
+                            dplyr::select(id, , condition, all_narratives) %>% 
+                            tidytext::unnest_tokens(input = all_narratives,
+                                                    output = word,
+                                                    format = "text",
+                                                    token = "words",
+                                                    drop = TRUE,
+                                                    to_lower = TRUE)
+glimpse(tokenized_narratives)
+
+#for each narrative, how many times each word appears
+tokenized_narratives %>% 
+    count(id, word) %>% 
+    print(n = 20)
+
+#get the top 3 words for each narrative
+tokenized_narratives %>% 
+    count(id, word) %>% 
+    group_by(id) %>% 
+    arrange(desc(n)) %>% 
+    filter(row_number() < 4) %>% 
+    ungroup() %>% 
+    print(n = 20)
+
+#create a document-term-matrix
+  dtm <-  tokenized_narratives %>% 
+          count(id, word) %>% 
+          tidytext::cast_dtm(document = id,
+                             term = word,
+                             value = n)
+  
+
+```
+
+
+# Run the LDA model
+
+```{r}
+lda_model <- topicmodels::LDA(x = dtm, k = 2, method = "Gibbs",
+                 control = list(alpha = 1, delta = 0.1, seed = 110))
+#probability of each topic for each narrative
+topicmodels::posterior(lda_model)$topics %>% 
+  head(20)
 
 ```
 
