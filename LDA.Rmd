@@ -16,6 +16,7 @@ editor_options:
 library(dplyr)
 library(tidytext)
 library(ggplot2)
+library(wordcloud)
 
 df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
 
@@ -116,6 +117,14 @@ wt_prob %>%
   ungroup() %>% 
   arrange(topic, -beta) %>% 
   print(n = 30)
+
+
+#top 10 words for every topic
+topicmodels::terms(lda_model, k = 10)
+
+#words with a probability of 2% or higher for each topic
+topicmodels::terms(lda_model, threshold = 0.02)
+
 ```
 
 # Visualization
@@ -141,6 +150,127 @@ tidytext::tidy(lda_model, matrix = "beta") %>%
   geom_col(aes(fill = as.factor(topic)),
            position = position_dodge()) + 
     theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust= .5))
+
+
+```
+
+# Removing stop-words and running LDA
+
+```{r}
+
+dtm_minus_stopwords <-  tokenized_narratives %>% 
+                          anti_join(stop_words) %>% 
+                          count(id, word) %>% 
+                          tidytext::cast_dtm(document = id,
+                                             term = word,
+                                              value = n)
+
+lda_model2 <- topicmodels::LDA(x = dtm_minus_stopwords, k = 2, method = "Gibbs",
+                 control = list(alpha = 1, delta = 0.1, seed = 110))
+
+#probability of each topic for each narrative
+topicmodels::posterior(lda_model2)$topics %>% 
+  head(20)
+
+#word-topic probability
+wt_prob2 <- tidytext::tidy(lda_model2, matrix = "beta")
+
+#document-topic probability (or narrative-topic probability)
+dt_prob2 <- tidytext::tidy(lda_model2, matrix = "gamma")
+
+#find top 15 terms that are more common in each topic
+wt_prob2 %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 15) %>% 
+  ungroup() %>% 
+  arrange(topic, -beta) %>% 
+  print(n = 30)
+
+
+#top 10 words for every topic
+topicmodels::terms(lda_model2, k = 10)
+
+#words with a probability of 1% or higher for each topic
+topicmodels::terms(lda_model2, threshold = 0.01)
+```
+
+# Wordclouds
+
+## Based on word frequency
+
+```{r}
+####using word frequency
+  ##for both conditions
+  #create a table of word frequencies for all narratives
+  word_freq <- df2 %>% 
+                  tidytext::unnest_tokens(input = all_narratives, output = word) %>% 
+                  anti_join(stop_words) %>% 
+                  count(word)
+  
+  wordcloud::wordcloud(words = word_freq$word, 
+                       freq = word_freq$n,
+                       min.freq = 2, max.words = 40,
+                       colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)
+  
+  ##for justified condition
+  #create a table of word frequencies 
+  word_freq_just <- df2 %>% 
+                  filter(condition == "justified") %>% 
+                  tidytext::unnest_tokens(input = all_narratives, output = word) %>% 
+                  anti_join(stop_words) %>% 
+                  count(word)
+  
+  wordcloud::wordcloud(words = word_freq_just$word, 
+                       freq = word_freq_just$n,
+                       min.freq = 2, max.words = 40,
+                       colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)
+
+
+  ##for unjustified condition
+  #create a table of word frequencies 
+  word_freq_nonjust <- df2 %>% 
+                  filter(condition == "nonjustified") %>% 
+                  tidytext::unnest_tokens(input = all_narratives, output = word) %>% 
+                  anti_join(stop_words) %>% 
+                  count(word)
+  
+  wordcloud::wordcloud(words = word_freq_nonjust$word, 
+                       freq = word_freq_nonjust$n,
+                       min.freq = 2, max.words = 40,
+                       colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)
+
+
+```
+
+## Based on topic weights
+
+```{r}
+###topic 1
+  #word frequency table based on beta*10^4
+  word_freqbeta_t1 <- lda_model2 %>% 
+                            tidytext::tidy(matrix = "beta") %>% 
+                            mutate(n = trunc(beta*10000)) %>% 
+                            filter(topic == 1)
+  wordcloud::wordcloud(words = word_freqbeta_t1$term, 
+                       freq = word_freqbeta_t1$n,
+                       min.freq = 2, max.words = 40,
+                       colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)            
+
+###topic 2
+  #word frequency table based on beta*10^4
+  word_freqbeta_t2 <- lda_model2 %>% 
+                            tidytext::tidy(matrix = "beta") %>% 
+                            mutate(n = trunc(beta*10000)) %>% 
+                            filter(topic == 2)
+  wordcloud::wordcloud(words = word_freqbeta_t2$term, 
+                       freq = word_freqbeta_t2$n,
+                       min.freq = 2, max.words = 40,
+                       colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)            
 
 
 ```
