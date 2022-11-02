@@ -17,6 +17,7 @@ library(dplyr)
 library(tidytext)
 library(ggplot2)
 library(wordcloud)
+library(topicmodels)
 
 df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
 
