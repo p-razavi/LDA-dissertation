@@ -1,0 +1,152 @@
+---
+title: "LDA on Anger Narratives - testing more than 2 topics"
+author: "Pooya Razavi"
+date: "last knitted: `r Sys.time()`"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: textmate
+    toc: TRUE
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(wordcloud)
+library(topicmodels)
+
+df <- readxl::read_xlsx("C:/Users/pooya/Dropbox (University of Oregon)/Anger Dissertation/Prototype study analysis/dataset1/ProcessedData_PR.F21.xlsx")
+
+#set up categorical variables
+df <- df %>% 
+          mutate(NarrativeWritten = as.factor(df$NarrativeWritten),
+                 NarrativeRelevant = as.factor(df$NarrativeRelevant),
+                 Condition = as.factor(df$Condition),
+                 gender = as.factor(df$gender))
+
+#assigning values to factor levels
+  levels(df$NarrativeWritten) <- c("No", "Yes")
+
+  levels(df$NarrativeRelevant) <- c("No", "Yes", NA) #note: This needs to be updated in the dataset after all naratives have been coded by RAs
+
+  levels(df$Condition) <- c("justified", "nonjustified", NA)
+  levels(df$gender) <- c("female", "male", "non-binary", "self-describe", "prefer_not")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Create the dataframe for text analysis
+
+```{r}
+df2 <- df %>% 
+          dplyr::filter(NarrativeRelevant == "Yes") %>% 
+          dplyr::select(Duration__in_seconds_, ResponseId, right_narrative, nonright_narrative, Condition, 
+                        anger_feel, anger_express, who_caused, gender) %>% 
+          dplyr::rename("duration" = "Duration__in_seconds_",
+                        "id" = "ResponseId",
+                        "justified_nar" = "right_narrative",
+                        "notjustified_nar" = "nonright_narrative",
+                        "condition" = "Condition") %>% 
+          dplyr::mutate(all_narratives = dplyr::coalesce(justified_nar, notjustified_nar))
+
+
+```
+
+# LDA with 4 topics
+
+## All words
+
+```{r}
+#create a document-term matrix
+
+dtm <- df2 %>% 
+          unnest_tokens(input = all_narratives, output = word) %>% 
+          anti_join(stop_words) %>% 
+          count(id, word) %>% 
+          cast_dtm(document = id, term = word, value = n)
+
+
+LDA_4topics <- LDA(dtm, k = 4, method = "Gibbs",
+                   control = list(alpha = 1, seed = 110))
+
+#look at the top 20 words for each topic
+terms(LDA_4topics, k = 20)
+
+```
+
+## Only past verbs
+
+```{r}
+ucla_verb_list <- readr::read_csv("ucla_verb_list.csv")
+
+#####past verbs
+dtm_verb <- df2 %>% 
+                unnest_tokens(input = all_narratives, output = word) %>% 
+                inner_join(ucla_verb_list, c("word" = "past")) %>% 
+                count(id, word) %>% 
+                cast_dtm(document = id, term = word, value = n)
+
+LDA_verbs_4topic <- LDA(dtm_verb, k = 4, method = "Gibbs",
+                        control = list(alpha = 1, seed = 110))
+
+
+#top 20 words for each topic
+terms(LDA_verbs_4topic, k = 20)
+
+# verbs with .01 or higher probability of presence in each topic
+terms(LDA_verbs_4topic, threshold = 0.01)
+
+# wordclouds for each topic
+par(mfrow=c(2,2))
+for (t in 1:4){
+  #create a table of word frequency
+  word_freq <- tidy(LDA_verbs_4topic, matrix = "beta") %>% 
+                    mutate(n = trunc(beta*10000)) %>% 
+                    filter(topic == t)
+  #wordcloud
+  wordcloud(words = word_freq$term,
+            freq = word_freq$n,
+            max.words = 30,
+            colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)
+}
+
+#####present verbs
+dtm_verb2 <- df2 %>% 
+                unnest_tokens(input = all_narratives, output = word) %>% 
+                inner_join(ucla_verb_list, c("word" = "present")) %>% 
+                count(id, word) %>% 
+                cast_dtm(document = id, term = word, value = n)
+
+LDA_verbs2_4topic <- LDA(dtm_verb2, k = 4, method = "Gibbs",
+                        control = list(alpha = 1, seed = 110))
+
+
+#top 20 words for each topic
+terms(LDA_verbs2_4topic, k = 20)
+
+# verbs with .01 or higher probability of presence in each topic
+terms(LDA_verbs2_4topic, threshold = 0.01)
+
+# wordclouds for each topic
+par(mfrow=c(2,2))
+for (t in 1:4){
+  #create a table of word frequency
+  word_freq <- tidy(LDA_verbs2_4topic, matrix = "beta") %>% 
+                    mutate(n = trunc(beta*10000)) %>% 
+                    filter(topic == t)
+  #wordcloud
+  wordcloud(words = word_freq$term,
+            freq = word_freq$n,
+            max.words = 30,
+            colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
+                       rot.per = .35)
+}
+
+```
+
