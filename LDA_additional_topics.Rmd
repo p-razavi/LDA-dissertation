@@ -113,7 +113,7 @@ for (t in 1:4){
             freq = word_freq$n,
             max.words = 30,
             colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
-                       rot.per = .35)
+                       scale=c(2.5,.65), rot.per = .35)
 }
 
 #####present verbs
@@ -145,7 +145,7 @@ for (t in 1:4){
             freq = word_freq$n,
             max.words = 30,
             colors = c("darkred", "lightblue", "lightgreen", "darkorange"),
-                       rot.per = .35)
+                       scale=c(2.25,.65), rot.per = .35)
 }
 
 ```
